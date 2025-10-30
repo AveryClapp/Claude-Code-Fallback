@@ -27,17 +27,25 @@ The tool monitors your Claude Code session for usage limit errors and automatica
 
 ## Installation
 
+### With mise + uv (Recommended)
+
+This project uses [mise](https://mise.jdx.dev/) for tool version management and [uv](https://docs.astral.sh/uv/) for fast Python dependency management.
+
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/claude-code-api-fallback.git
 cd claude-code-api-fallback
 
-# Install dependencies
-pip install -r requirements.txt
+# Install mise (if not already installed)
+# macOS/Linux:
+curl https://mise.run | sh
+
+# Install dependencies (mise will automatically set up Python 3.12 and create a venv with uv)
+mise install
 
 # Configure your settings
 cp config.example.json config.json
-nano config.json
+vim config.json
 ```
 
 ## Configuration
@@ -114,10 +122,11 @@ For most users, subscription + occasional API usage is more cost-effective than 
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.8+ (Python 3.12 recommended with mise)
 - Active Claude Pro or Max subscription
 - Anthropic API key (for fallback)
 - Claude Code installed
+- Optional: [mise](https://mise.jdx.dev/) for streamlined setup
 
 ## Security Notes
 
@@ -160,6 +169,3 @@ APACHE 2.0 License - see LICENSE file for details
 - Thanks to the Anthropic team for building Claude Code
 
 ---
-
-p
-
