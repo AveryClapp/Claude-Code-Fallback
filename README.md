@@ -20,7 +20,6 @@ The tool monitors your Claude Code session for usage limit errors and automatica
 
 - 🔄 **Automatic Detection**: Monitors for usage limit errors in real-time
 - ⚡ **Seamless Switching**: Continues your session without losing context
-- 💰 **Cost Tracking**: Logs API usage so you know what you're spending
 - 🔔 **Smart Notifications**: Alerts you before switching or when approaching limits
 - ⏰ **Auto-Reset**: Switches back to subscription mode when your limits reset
 - 🛡️ **Safe Mode**: Optional prompt before spending API credits
@@ -32,17 +31,10 @@ This project is currently in early development. The planned architecture include
 ### Source Files (src/claude_fallback/)
 
 - **`__init__.py`** - Package initialization and version info
-- **`cli.py`** _(planned)_ - Command-line interface using Typer for user interactions
-- **`monitor.py`** _(planned)_ - Background process monitor to detect Claude Code usage limit errors
-- **`config.py`** _(planned)_ - Configuration management using Pydantic for settings validation
-- **`api_client.py`** _(planned)_ - Anthropic API client wrapper for handling API-based requests
-- **`usage_tracker.py`** _(planned)_ - Cost and usage logging functionality
-- **`notifier.py`** _(planned)_ - Notification system for alerts and status updates
+- **`cli.py`** - Command-line interface using Typer for user interactions
+- **`monitor.py`** - Background process monitor to detect Claude Code usage limit errors
+- **`config.py`** - Configuration management using Pydantic for settings validation
 - **`session.py`** _(planned)_ - Session state management and mode switching logic
-
-### Current Status
-
-The project currently contains the basic package structure. Core functionality including monitoring, API switching, and usage tracking are planned for implementation. See the [Roadmap](#roadmap) section for upcoming features.
 
 ## Installation
 
