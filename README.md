@@ -145,6 +145,7 @@ For most users, subscription + occasional API usage is more cost-effective than 
 - Active Claude Pro or Max subscription
 - Anthropic API key (for fallback)
 - Claude Code installed
+- **macOS or Linux** (uses PTY for process interaction - Windows support planned)
 - Optional: [mise](https://mise.jdx.dev/) for streamlined setup
 
 ## Security Notes
