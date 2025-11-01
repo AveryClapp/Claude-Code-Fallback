@@ -1,6 +1,6 @@
 [project]
 name = "claude-code-fallback"
-version = "0.1.0"
+version = "0.1.1"
 description = "Automatically switch from Claude subscription to API billing when you hit usage limits"
 readme = "README.md"
 requires-python = ">=3.8"
