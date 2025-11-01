@@ -58,9 +58,12 @@ class Monitor:
                 sys.stdout.write(text)
                 sys.stdout.flush()
 
-                # Check for usage limit pattern (case insensitive)
+                # Check for usage limit pattern (more specific)
+                # Claude Code shows messages like "Usage resets in X hours"
                 text_lower = text.lower()
-                if 'resets' in text_lower or 'usage limit' in text_lower:
+                if ('usage' in text_lower and 'resets' in text_lower) or \
+                   'usage limit reached' in text_lower or \
+                   'rate limit' in text_lower:
                     # Give visual indication
                     console.print("\n[yellow]⚠ Usage limit detected![/yellow]")
                     self.should_switch = True

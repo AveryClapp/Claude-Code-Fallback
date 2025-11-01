@@ -1,9 +1,12 @@
 """Session management and mode switching logic."""
 
+import fcntl
 import os
 import pty
 import signal
+import struct
 import sys
+import termios
 import time
 from subprocess import Popen
 
@@ -44,6 +47,9 @@ class Session:
             # Execute Claude Code in the child process
             os.execvpe('claude', ['claude'], env)
         else:  # Parent process
+            # Set the PTY size to match the current terminal
+            self._set_pty_size(self.master_fd)
+
             # Store the process (we track it via pid)
             self.process = self._get_process_from_pid(pid)
 
@@ -52,6 +58,17 @@ class Session:
             self.monitor.start()
 
             console.print("[dim]Session started. Monitoring for usage limits...[/dim]")
+
+    def _set_pty_size(self, fd):
+        """Set the PTY size to match the current terminal."""
+        try:
+            # Get the size of the current terminal
+            size = struct.unpack('HHHH', fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, struct.pack('HHHH', 0, 0, 0, 0)))
+            # Set the PTY to the same size
+            fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', *size))
+        except Exception:
+            # If we can't get/set the size, just continue
+            pass
 
     def _get_process_from_pid(self, pid):
         """Create a process-like object from PID for monitoring."""
@@ -138,6 +155,9 @@ class Session:
         if pid == 0:  # Child process
             os.execvpe('claude', ['claude'], env)
         else:  # Parent process
+            # Set the PTY size to match the current terminal
+            self._set_pty_size(self.master_fd)
+
             self.process = self._get_process_from_pid(pid)
 
             # Update mode and restart monitor
@@ -157,7 +177,13 @@ class Session:
         """
         import select
         import tty
-        import termios
+
+        # Set up signal handler for terminal resize
+        def handle_sigwinch(signum, frame):
+            if self.master_fd is not None:
+                self._set_pty_size(self.master_fd)
+
+        old_sigwinch = signal.signal(signal.SIGWINCH, handle_sigwinch)
 
         # Set terminal to raw mode for proper interaction
         try:
@@ -202,6 +228,8 @@ class Session:
         except KeyboardInterrupt:
             console.print("\n[yellow]Interrupted by user[/yellow]")
         finally:
+            # Restore signal handler
+            signal.signal(signal.SIGWINCH, old_sigwinch)
             self._restore_terminal()
             self.stop()
 
