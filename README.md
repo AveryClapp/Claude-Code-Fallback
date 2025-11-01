@@ -157,12 +157,7 @@ For most users, subscription + occasional API usage is more cost-effective than 
 
 ## Roadmap
 
-- [ ] GUI dashboard for real-time monitoring
-- [ ] Slack/Discord notifications
-- [ ] Multi-session management
 - [ ] Cost prediction based on codebase analysis
-- [ ] Integration with usage analytics tools
-- [ ] Support for team/enterprise plans
 
 ## Contributing
 
