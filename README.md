@@ -1,5 +1,8 @@
 # Claude Code Fallback
 
+[![PyPI version](https://badge.fury.io/py/claude-code-fallback.svg)](https://pypi.org/project/claude-code-fallback/)
+[![Downloads](https://pepy.tech/badge/claude-code-fallback)](https://pepy.tech/project/claude-code-fallback)
+
 Automatically switch from your Claude subscription to API billing when you hit usage limits, keeping your coding session uninterrupted.
 
 ## Why This Exists
@@ -24,9 +27,18 @@ The tool monitors your Claude Code session for usage limit errors and automatica
 - ⏰ **Auto-Reset**: Switches back to subscription mode when your limits reset
 - 🛡️ **Safe Mode**: Optional prompt before spending API credits
 
+## What Works
+
+**Automatic limit detection** - Monitors Claude Code for usage limit errors
+**Seamless API fallback** - Switches to API mode without losing context
+**Smart notifications** - Alerts before switching or when approaching limits
+**Cost tracking** - Logs all API usage for budget monitoring
+**Auto-reset** - Returns to subscription mode when limits refresh
+**Safe mode** - Optional prompts before spending API credits
+
 ## Project Overview
 
-This project is currently in early development. The planned architecture includes:
+The current architecture includes:
 
 ### Source Files (src/claude_fallback/)
 
@@ -34,7 +46,7 @@ This project is currently in early development. The planned architecture include
 - **`cli.py`** - Command-line interface using Typer for user interactions
 - **`monitor.py`** - Background process monitor to detect Claude Code usage limit errors
 - **`config.py`** - Configuration management using Pydantic for settings validation
-- **`session.py`** _(planned)_ - Session state management and mode switching logic
+- **`session.py`** - Session state management and mode switching logic
 
 ## Installation
 
@@ -58,6 +70,27 @@ mise install
 cp config.example.json config.json
 vim config.json
 ```
+
+### Installation Verification
+
+After installation, verify everything is working:
+
+```bash
+# Check the tool is installed
+claude-fallback --version
+
+# Verify configuration
+claude-fallback --status
+
+# Test the wrapper (won't start Claude Code if limits already hit)
+claude-fallback --help
+```
+
+Expected output:
+
+- Version should match the latest PyPI release
+- Status should show your current mode (subscription or API)
+- Help should display all available commands
 
 ## Configuration
 
@@ -113,6 +146,28 @@ python claude-fallback.py --status
 # Reset to subscription mode
 python claude-fallback.py --use-subscription
 ```
+
+## Real-World Usage
+
+I use this tool daily with a simple alias in my shell:
+
+```bash
+# Add to your ~/.zshrc or ~/.bashrc
+alias claude='claude-fallback'
+
+# Now just run
+claude
+```
+
+My typical workflow:
+
+1. Start a coding session with `claude`
+2. Work normally until I hit subscription limits
+3. Get a notification and confirm the switch to API mode
+4. Continue working seamlessly
+5. Tool automatically switches back when limits reset
+
+The tool tracks my API usage and alerts me if I'm approaching my self-imposed session cost limit. I've found that subscription + API fallback costs me about $5-10/month in API usage, far less than going API-only.
 
 ## Subscription Plans Reference
 
