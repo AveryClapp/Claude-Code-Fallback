@@ -32,10 +32,7 @@ A lightweight background monitor watches Claude Code's JSONL logs for usage limi
 
 **Automatic limit detection** - Monitors Claude Code for usage limit errors
 **Seamless API fallback** - Switches to API mode without losing context
-**Smart notifications** - Alerts before switching or when approaching limits
-**Cost tracking** - Logs all API usage for budget monitoring
-**Auto-reset** - Returns to subscription mode when limits refresh
-**Safe mode** - Optional prompts before spending API credits
+**Smart notifications** - Native OS alerts when usage limits are detected
 
 ## Architecture
 
