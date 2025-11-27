@@ -1,108 +1,132 @@
-"""Background process monitor to detect Claude Code usage limit errors."""
+"""JSONL log monitor for Claude Code usage limits."""
 
 import os
-import sys
-import threading
 import time
-from typing import Optional, IO
+from pathlib import Path
+from typing import Optional
 
-from rich.console import Console
+from claude_fallback.detector import UsageLimitDetector
+from claude_fallback.notifier import Notifier
+from claude_fallback.config import Config
 
-console = Console()
 
+class LogMonitor:
+    """Monitors Claude Code JSONL logs for usage limit events."""
 
-class Monitor:
-    """Monitors Claude Code process output for usage limits and errors."""
-
-    def __init__(self, process, output_fd: Optional[int] = None):
+    def __init__(self, config: Config):
         """
-        Initialize monitor.
+        Initialize the monitor.
 
         Args:
-            process: The Claude Code process
-            output_fd: File descriptor to read output from (for pty mode)
+            config: Configuration object
         """
-        self.process = process
-        self.output_fd = output_fd
-        self.should_switch = False
-        self.process_exited = False
-        self.monitoring_thread = None
+        self.config = config
+        self.detector = UsageLimitDetector()
+        self.notifier = Notifier(enable_sound=True)
         self.running = False
-        self.output_buffer = []
+        self.notified = False  # Track if we've already notified for current session
 
-    def start(self):
-        """Start monitoring in a background thread."""
-        self.running = True
-        self.monitoring_thread = threading.Thread(target=self._monitor_loop, daemon=True)
-        self.monitoring_thread.start()
-        console.print("[dim]Monitor started[/dim]")
-
-    def _monitor_loop(self):
-        """Background thread that reads output and checks for patterns."""
-        while self.running:
-            self._read_and_check_output()
-            self._check_process_health()
-            time.sleep(0.01)  # Small sleep to avoid busy-waiting
-
-    def _read_and_check_output(self):
-        """Read output from pty, display it, and check for usage limits."""
-        if self.output_fd is None:
-            return
-
-        try:
-            # Non-blocking read from the pty
-            data = os.read(self.output_fd, 4096)
-            if data:
-                # Decode and display to user
-                text = data.decode('utf-8', errors='ignore')
-                sys.stdout.write(text)
-                sys.stdout.flush()
-
-                # Check for usage limit pattern (more specific)
-                # Claude Code shows messages like "Usage resets in X hours"
-                text_lower = text.lower()
-                if ('usage' in text_lower and 'resets' in text_lower) or \
-                   'usage limit reached' in text_lower or \
-                   'rate limit' in text_lower:
-                    # Give visual indication
-                    console.print("\n[yellow]⚠ Usage limit detected![/yellow]")
-                    self.should_switch = True
-
-        except OSError:
-            # No data available or error reading
-            pass
-        except Exception as e:
-            # Ignore other errors during reading
-            pass
-
-    def _check_process_health(self):
-        """Check if process crashed or exited."""
-        if self.process.poll() is not None:
-            self.process_exited = True
-            self.running = False
-
-    def get_status(self):
+    def find_active_log(self) -> Optional[Path]:
         """
-        Called by Session.wait() to determine action.
+        Find the most recent JSONL log file for the current directory.
 
         Returns:
-            'exited' - Process ended, user quit
-            'switch' - Usage limit detected, need to switch to API
-            'continue' - Everything normal, keep running
+            Path to the log file, or None if not found
         """
-        if self.process_exited:
-            return "exited"
-        elif self.should_switch:
-            return "switch"
-        else:
-            return "continue"
+        cwd = os.getcwd()
+        # Convert path to Claude's project directory naming convention
+        # e.g., /Users/foo/project -> -Users-foo-project
+        project_name = cwd.replace("/", "-")
 
-    def reset_switch_flag(self):
-        """Reset the switch flag after handling."""
-        self.should_switch = False
+        projects_dir = Path.home() / ".claude" / "projects" / project_name
+
+        if not projects_dir.exists():
+            return None
+
+        # Find most recent .jsonl file (excluding agent logs)
+        jsonl_files = [
+            f for f in projects_dir.glob("*.jsonl")
+            if not f.name.startswith("agent-")
+        ]
+
+        if not jsonl_files:
+            return None
+
+        # Return most recently modified file
+        return max(jsonl_files, key=lambda f: f.stat().st_mtime)
+
+    def tail_log(self, log_path: Path):
+        """
+        Tail follow a log file and check for usage limits.
+
+        Args:
+            log_path: Path to the JSONL log file
+        """
+        with open(log_path, "r") as f:
+            # Seek to end of file
+            f.seek(0, os.SEEK_END)
+
+            while self.running:
+                line = f.readline()
+                if not line:
+                    time.sleep(0.1)  # Wait for new content
+                    continue
+
+                # Check for usage limit
+                detection = self.detector.check_event(line)
+                if detection and not self.notified:
+                    self._handle_limit_detected(detection)
+                    self.notified = True
+
+    def _handle_limit_detected(self, detection: dict):
+        """
+        Handle a detected usage limit.
+
+        Args:
+            detection: Detection info from detector
+        """
+        self.notifier.notify(
+            title="Claude Code Usage Limit Reached",
+            message="Run 'claude-api' to switch to API billing and continue working."
+        )
+
+    def start(self):
+        """Start monitoring the active log file."""
+        self.running = True
+
+        while self.running:
+            log_path = self.find_active_log()
+
+            if log_path:
+                print(f"Monitoring: {log_path}")
+                try:
+                    self.tail_log(log_path)
+                except FileNotFoundError:
+                    # Log file was deleted, find new one
+                    pass
+                except Exception as e:
+                    print(f"Error monitoring log: {e}")
+                    time.sleep(5)
+            else:
+                # No active log found, wait and retry
+                time.sleep(2)
 
     def stop(self):
-        """Stop monitoring thread."""
+        """Stop monitoring."""
         self.running = False
-        if self.monitoring_thread and self.monitoring_thread.is_alive():
-            self.monitoring_thread.join(timeout=2)
+
+
+def main():
+    """Main entry point for the monitor daemon."""
+    config = Config.load()
+    monitor = LogMonitor(config)
+
+    try:
+        monitor.start()
+    except KeyboardInterrupt:
+        print("\nStopping monitor...")
+        monitor.stop()
+
+
+if __name__ == "__main__":
+    main()

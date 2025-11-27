@@ -1,63 +1,119 @@
 """Command-line interface for Claude Code Fallback."""
 
-import typer
-from rich.console import Console
+import os
+import sys
+from pathlib import Path
 
 from claude_fallback.config import Config
-from claude_fallback.session import Session
-
-console = Console()
-
-app = typer.Typer(
-    help="Automatically switch Claude Code from subscription to API when usage limits are hit."
-)
+from claude_fallback.monitor import LogMonitor
 
 
-@app.command()
-def run():
-    """
-    Start Claude Code with automatic fallback to API mode.
+def install_shell_functions():
+    """Install shell functions to user's shell configuration."""
+    # Find user's shell config file
+    home = Path.home()
+    shell = os.environ.get("SHELL", "")
 
-    This will launch Claude Code in subscription mode and automatically
-    switch to API billing when usage limits are detected.
-    """
+    if "zsh" in shell:
+        rc_file = home / ".zshrc"
+    elif "bash" in shell:
+        rc_file = home / ".bashrc"
+    else:
+        print(f"Unsupported shell: {shell}")
+        print("Please manually add shell_functions.sh to your shell configuration")
+        return
+
+    # Path to shell_functions.sh
+    functions_file = Path(__file__).parent / "shell_functions.sh"
+
+    # Check if already installed
+    if rc_file.exists():
+        content = rc_file.read_text()
+        if "claude_fallback/shell_functions.sh" in content:
+            print(f"Shell functions already installed in {rc_file}")
+            return
+
+    # Add source line to rc file
+    source_line = f'\n# Claude Code Fallback\nsource "{functions_file}"\n'
+
+    with open(rc_file, "a") as f:
+        f.write(source_line)
+
+    print(f"Shell functions installed to {rc_file}")
+    print("\nTo use immediately, run:")
+    print(f"  source {rc_file}")
+    print("\nOr restart your terminal")
+    print("\nDon't forget to set your API key:")
+    print("  export CLAUDE_FALLBACK_API_KEY='sk-ant-api03-...'")
+
+
+def start_monitor():
+    """Start the background monitor."""
     try:
-        # Load and validate configuration
         config = Config.load()
-        config.validate()
-
-        # Create and start session
-        session = Session(config)
-        session.start()
-        session.wait()
-
+        monitor = LogMonitor(config)
+        print("Starting Claude Code monitor...")
+        print("Press Ctrl+C to stop")
+        monitor.start()
     except FileNotFoundError as e:
-        console.print(f"[red]Error: {e}[/red]")
-        console.print("\n[yellow]Create a config.json file with your settings:[/yellow]")
-        console.print("""
+        print(f"Error: {e}")
+        print("\nCreate a config.json file with your settings:")
+        print("""
 {
   "api_key": "sk-ant-api03-...",
-  "auto_switch": false,
-  "prompt_before_switch": true,
-  "cost_limit_per_session": 10.0,
-  "log_usage": true,
-  "notify_at_percentage": 80,
-  "auto_revert_on_reset": true
+  "log_usage": true
 }
         """)
-    except ValueError as e:
-        console.print(f"[red]Configuration error: {e}[/red]")
+        sys.exit(1)
     except KeyboardInterrupt:
-        console.print("\n[yellow]Exiting...[/yellow]")
-    except Exception as e:
-        console.print(f"[red]Unexpected error: {e}[/red]")
+        print("\nStopping monitor...")
+        monitor.stop()
 
 
-@app.command()
-def status():
-    """Check current mode and usage status."""
-    console.print("[yellow]Status command not yet implemented[/yellow]")
+def show_status():
+    """Show current status."""
+    import subprocess
+
+    # Check if monitor is running
+    result = subprocess.run(
+        ["pgrep", "-f", "python.*claude_fallback.*monitor"],
+        capture_output=True
+    )
+
+    if result.returncode == 0:
+        print("Monitor: Running")
+    else:
+        print("Monitor: Not running")
+
+    # Check current mode
+    if "ANTHROPIC_API_KEY" in os.environ:
+        print("Mode: API")
+    else:
+        print("Mode: Subscription")
+
+
+def main():
+    """Main CLI entry point."""
+    if len(sys.argv) < 2:
+        print("Usage: claude-fallback <command>")
+        print("\nCommands:")
+        print("  install  - Install shell functions to your shell configuration")
+        print("  start    - Start the background monitor")
+        print("  status   - Show current status")
+        sys.exit(1)
+
+    command = sys.argv[1]
+
+    if command == "install":
+        install_shell_functions()
+    elif command == "start":
+        start_monitor()
+    elif command == "status":
+        show_status()
+    else:
+        print(f"Unknown command: {command}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    app()
+    main()

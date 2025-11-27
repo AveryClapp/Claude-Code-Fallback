@@ -11,21 +11,22 @@ Claude Code usage is shared with your web Claude.ai usage and resets every 5 hou
 
 ## How It Works
 
-The tool monitors your Claude Code session for usage limit errors and automatically:
+A lightweight background monitor watches Claude Code's JSONL logs for usage limit errors:
 
-1. Detects when you've hit your subscription usage limits
-2. Prompts you to switch to API mode (or switches automatically if configured)
-3. Sets the `ANTHROPIC_API_KEY` environment variable to enable API billing
-4. Allows you to continue your session seamlessly
-5. Optionally switches back to subscription mode when limits reset
+1. You run Claude Code normally (no wrapper needed)
+2. Background monitor detects when you've hit subscription limits by parsing `~/.claude/projects/` logs
+3. You receive a notification: "Usage limit reached! Run 'claude-api' to switch"
+4. You exit Claude Code and run `claude-api` to restart with API billing
+5. Continue working seamlessly in the same directory
+6. Optionally run `claude-sub` to switch back to subscription mode
 
 ## Features
 
-- 🔄 **Automatic Detection**: Monitors for usage limit errors in real-time
-- ⚡ **Seamless Switching**: Continues your session without losing context
-- 🔔 **Smart Notifications**: Alerts you before switching or when approaching limits
-- ⏰ **Auto-Reset**: Switches back to subscription mode when your limits reset
-- 🛡️ **Safe Mode**: Optional prompt before spending API credits
+- 🔄 **Log-Based Detection**: Monitors JSONL logs for usage limit errors (works in tmux/ssh/any terminal)
+- ⚡ **Simple Shell Functions**: Switch modes with `claude-api` and `claude-sub` commands
+- 🔔 **Native Notifications**: OS-level alerts when limits are detected
+- ⏰ **Directory Preservation**: Automatically restarts Claude in your working directory
+- 🛡️ **No Process Wrapping**: Claude Code runs normally, no PTY manipulation
 
 ## What Works
 
@@ -36,17 +37,24 @@ The tool monitors your Claude Code session for usage limit errors and automatica
 **Auto-reset** - Returns to subscription mode when limits refresh
 **Safe mode** - Optional prompts before spending API credits
 
-## Project Overview
+## Architecture
 
-The current architecture includes:
+### Log-Based Monitoring (v2.0+)
 
-### Source Files (src/claude_fallback/)
+The new architecture uses JSONL log monitoring instead of PTY wrapping:
 
-- **`__init__.py`** - Package initialization and version info
-- **`cli.py`** - Command-line interface using Typer for user interactions
-- **`monitor.py`** - Background process monitor to detect Claude Code usage limit errors
-- **`config.py`** - Configuration management using Pydantic for settings validation
-- **`session.py`** - Session state management and mode switching logic
+- **`monitor.py`** - Watches `~/.claude/projects/[project]/[session].jsonl` for usage limit events
+- **`detector.py`** - Parses JSON events and detects usage limit patterns
+- **`notifier.py`** - Cross-platform notifications (macOS/Linux)
+- **`config.py`** - Simple configuration (API key, notification preferences)
+- **`shell_functions.sh`** - Shell functions for `claude-api` and `claude-sub`
+
+### Why Log-Based?
+
+- **tmux/ssh compatible**: No PTY manipulation means it works everywhere
+- **More reliable**: Parsing structured JSON vs fragile text patterns
+- **Simpler**: ~200 fewer lines of complex process management code
+- **User control**: You decide when to switch, not automatic background restarts
 
 ## Installation
 
@@ -120,54 +128,68 @@ Edit `config.json` with your preferences:
 
 ## Usage
 
-### As a Wrapper
+### Setup
 
 ```bash
-# Run Claude Code through the fallback wrapper
-python claude-fallback.py
+# Install shell functions (adds to ~/.zshrc or ~/.bashrc)
+claude-fallback install
+
+# Start background monitor
+claude-fallback start
+
+# Check status
+claude-fallback status
 ```
 
-### As a Background Monitor
+### Daily Workflow
 
 ```bash
-# Monitor an existing Claude Code session
-python monitor.py --pid <claude-code-pid>
+# Start Claude Code normally
+claude
+
+# When you hit limits, you'll see a notification
+# Exit Claude Code (Ctrl+D or type 'exit')
+
+# Switch to API mode
+claude-api
+
+# Continue working...
+
+# Later, switch back to subscription
+claude-sub
 ```
 
-### Manual Control
+### Shell Functions
+
+The installer adds these functions to your shell:
 
 ```bash
-# Force switch to API mode
-python claude-fallback.py --force-api
+# Switch to API billing
+claude-api() {
+  export ANTHROPIC_API_KEY="your-key"
+  exec claude
+}
 
-# Check current mode and usage
-python claude-fallback.py --status
-
-# Reset to subscription mode
-python claude-fallback.py --use-subscription
+# Switch to subscription billing
+claude-sub() {
+  unset ANTHROPIC_API_KEY
+  exec claude
+}
 ```
 
 ## Real-World Usage
 
-I use this tool daily with a simple alias in my shell:
-
-```bash
-# Add to your ~/.zshrc or ~/.bashrc
-alias claude='claude-fallback'
-
-# Now just run
-claude
-```
-
 My typical workflow:
 
-1. Start a coding session with `claude`
-2. Work normally until I hit subscription limits
-3. Get a notification and confirm the switch to API mode
-4. Continue working seamlessly
-5. Tool automatically switches back when limits reset
+1. Start a coding session with `claude` (runs normally, no wrapper)
+2. Background monitor watches the session logs
+3. Work normally until I hit subscription limits
+4. Get a native OS notification: "Usage limit reached! Run 'claude-api'"
+5. Exit Claude Code and run `claude-api` to switch
+6. Continue working in the same directory
+7. When done with heavy work, run `claude-sub` to switch back
 
-The tool tracks my API usage and alerts me if I'm approaching my self-imposed session cost limit. I've found that subscription + API fallback costs me about $5-10/month in API usage, far less than going API-only.
+The background monitor is lightweight (just tailing a log file) and works perfectly in tmux, ssh sessions, or any terminal environment. I've found that subscription + API fallback costs about $5-10/month in API usage, far less than going API-only.
 
 ## Subscription Plans Reference
 
@@ -192,7 +214,7 @@ For most users, subscription + occasional API usage is more cost-effective than 
 - Active Claude Pro or Max subscription
 - Anthropic API key (for fallback)
 - Claude Code installed
-- **macOS or Linux** (uses PTY for process interaction - Windows support planned)
+- **macOS or Linux** (Windows support via WSL)
 - Optional: [mise](https://mise.jdx.dev/) for streamlined setup
 
 ## Security Notes

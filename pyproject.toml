@@ -1,6 +1,6 @@
 [project]
 name = "claude-code-fallback"
-version = "0.1.2"
+version = "2.0.0"
 description = "Automatically switch from Claude subscription to API billing when you hit usage limits"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -22,12 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "anthropic>=0.40.0",
-    "psutil>=5.9.0",
-    "rich>=13.0.0",
-    "typer>=0.12.0",
     "pydantic>=2.0.0",
-    "pydantic-settings>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -39,7 +34,7 @@ dev = [
 ]
 
 [project.scripts]
-claude-fallback = "claude_fallback.cli:app"
+claude-fallback = "claude_fallback.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/averyclapp/claude-code-fallback"
