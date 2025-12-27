@@ -4,6 +4,7 @@ import os
 import sys
 from pathlib import Path
 
+from claude_fallback import __version__ as VERSION
 from claude_fallback.config import Config
 from claude_fallback.monitor import LogMonitor
 
@@ -49,6 +50,7 @@ def install_shell_functions():
 
 def start_monitor():
     """Start the background monitor."""
+    monitor = None
     try:
         config = Config.load()
         monitor = LogMonitor(config)
@@ -58,16 +60,19 @@ def start_monitor():
     except FileNotFoundError as e:
         print(f"Error: {e}")
         print("\nCreate a config.json file with your settings:")
-        print("""
+        print(
+            """
 {
   "api_key": "sk-ant-api03-...",
   "log_usage": true
 }
-        """)
+        """
+        )
         sys.exit(1)
     except KeyboardInterrupt:
-        print("\nStopping monitor...")
-        monitor.stop()
+        if monitor:
+            print("\nStopping monitor...")
+            monitor.stop()
 
 
 def show_status():
@@ -76,8 +81,7 @@ def show_status():
 
     # Check if monitor is running
     result = subprocess.run(
-        ["pgrep", "-f", "python.*claude_fallback.*monitor"],
-        capture_output=True
+        ["pgrep", "-f", "python.*claude_fallback.*monitor"], capture_output=True
     )
 
     if result.returncode == 0:
@@ -92,11 +96,36 @@ def show_status():
         print("Mode: Subscription")
 
 
+def show_version():
+    """Print the version number and exit."""
+    print(f"Claude Code Fallback v{VERSION}")
+
+
+def show_help():
+    """Print the usage instructions and available commands."""
+    help_text = f"""
+    Claude Code Fallback v{VERSION}
+
+    Usage: 
+      claude-fallback <command> [options]
+
+    Commands:
+      install   - Install shell functions to your shell configuration
+      start     - Start the background monitor
+      status    - Show current status
+      version   - Show the version number
+      help      - Show this help message
+    """
+    print(help_text)
+
+
 def main():
     """Main CLI entry point."""
     if len(sys.argv) < 2:
         print("Usage: claude-fallback <command>")
         print("\nCommands:")
+        print("  version  - Show current version")
+        print("  help     - Enumerates available commands")
         print("  install  - Install shell functions to your shell configuration")
         print("  start    - Start the background monitor")
         print("  status   - Show current status")
@@ -110,6 +139,10 @@ def main():
         start_monitor()
     elif command == "status":
         show_status()
+    elif command == "version" or command == "v":
+        show_version()
+    elif command == "help" or command == "h":
+        show_help()
     else:
         print(f"Unknown command: {command}")
         sys.exit(1)

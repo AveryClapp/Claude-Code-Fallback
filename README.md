@@ -73,13 +73,13 @@ After installation, verify everything is working:
 
 ```bash
 # Check the tool is installed
-claude-fallback --version
+claude-fallback version
 
 # Verify configuration
-claude-fallback --status
+claude-fallback status
 
 # Test the wrapper (won't start Claude Code if limits already hit)
-claude-fallback --help
+claude-fallback help
 ```
 
 Expected output:
