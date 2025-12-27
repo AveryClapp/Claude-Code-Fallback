@@ -22,11 +22,11 @@ A lightweight background monitor watches Claude Code's JSONL logs for usage limi
 
 ## Features
 
-- 🔄 **Log-Based Detection**: Monitors JSONL logs for usage limit errors (works in tmux/ssh/any terminal)
-- ⚡ **Simple Shell Functions**: Switch modes with `claude-api` and `claude-sub` commands
-- 🔔 **Native Notifications**: OS-level alerts when limits are detected
-- ⏰ **Directory Preservation**: Automatically restarts Claude in your working directory
-- 🛡️ **No Process Wrapping**: Claude Code runs normally, no PTY manipulation
+- **Log-Based Detection**: Monitors JSONL logs for usage limit errors (works in tmux/ssh/any terminal)
+- **Simple Shell Functions**: Switch modes with `claude-api` and `claude-sub` commands
+- **Native Notifications**: OS-level alerts when limits are detected
+- **Directory Preservation**: Automatically restarts Claude in your working directory
+- **No Process Wrapping**: Claude Code runs normally, no PTY manipulation
 
 ## What Works
 
@@ -36,8 +36,6 @@ A lightweight background monitor watches Claude Code's JSONL logs for usage limi
 
 ## Architecture
 
-### Log-Based Monitoring (v2.0+)
-
 The new architecture uses JSONL log monitoring instead of PTY wrapping:
 
 - **`monitor.py`** - Watches `~/.claude/projects/[project]/[session].jsonl` for usage limit events
@@ -45,13 +43,6 @@ The new architecture uses JSONL log monitoring instead of PTY wrapping:
 - **`notifier.py`** - Cross-platform notifications (macOS/Linux)
 - **`config.py`** - Simple configuration (API key, notification preferences)
 - **`shell_functions.sh`** - Shell functions for `claude-api` and `claude-sub`
-
-### Why Log-Based?
-
-- **tmux/ssh compatible**: No PTY manipulation means it works everywhere
-- **More reliable**: Parsing structured JSON vs fragile text patterns
-- **Simpler**: ~200 fewer lines of complex process management code
-- **User control**: You decide when to switch, not automatic background restarts
 
 ## Installation
 
@@ -188,22 +179,7 @@ My typical workflow:
 
 The background monitor is lightweight (just tailing a log file) and works perfectly in tmux, ssh sessions, or any terminal environment. I've found that subscription + API fallback costs about $5-10/month in API usage, far less than going API-only.
 
-## Subscription Plans Reference
-
-- **Pro ($20/month)**: ~45 messages or 10-40 prompts every 5 hours
-- **Max 5x ($100/month)**: ~225 messages or 50-200 prompts every 5 hours
-- **Max 20x ($200/month)**: ~900 messages or 200-800 prompts every 5 hours
-
 Usage varies based on codebase size, conversation length, and model choice (Opus uses ~5x more than Sonnet).
-
-## Cost Comparison
-
-**Example: Heavy coding session**
-
-- Subscription: $20/month Pro = ~40-80 hours of Sonnet 4
-- API: ~$0.003/prompt input + ~$0.015/prompt output (varies by context)
-
-For most users, subscription + occasional API usage is more cost-effective than pure API usage.
 
 ## Requirements
 
