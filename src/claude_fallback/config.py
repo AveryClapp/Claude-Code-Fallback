@@ -9,59 +9,62 @@ from typing import Optional
 class Config:
     """Configuration settings for the fallback tool."""
 
-    def __init__(
-        self,
-        api_key: str,
-        auto_switch: bool = False,
-        prompt_before_switch: bool = True,
-        cost_limit_per_session: float = 10.0,
-        log_usage: bool = True,
-        notify_at_percentage: int = 80,
-        auto_revert_on_reset: bool = True
-    ):
+    ENV_VAR_NAME = "CLAUDE_FALLBACK_API_KEY"
+
+    def __init__(self, api_key: str, auto_restart: bool = False):
         self.api_key = api_key
-        self.auto_switch = auto_switch
-        self.prompt_before_switch = prompt_before_switch
-        self.cost_limit_per_session = cost_limit_per_session
-        self.log_usage = log_usage
-        self.notify_at_percentage = notify_at_percentage
-        self.auto_revert_on_reset = auto_revert_on_reset
+        self.auto_restart = auto_restart
 
     @classmethod
     def load(cls, config_path: Optional[str] = None) -> "Config":
-        """Load configuration from JSON file."""
+        """
+        Load configuration from environment variable or JSON file.
+
+        Priority:
+        1. CLAUDE_FALLBACK_API_KEY environment variable
+        2. config.json file
+
+        auto_restart can be set via:
+        - CLAUDE_FALLBACK_AUTO_RESTART=1 environment variable
+        - "auto_restart": true in config.json
+        """
+        auto_restart = os.environ.get("CLAUDE_FALLBACK_AUTO_RESTART", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+
+        # First, try environment variable for API key
+        api_key = os.environ.get(cls.ENV_VAR_NAME)
+        if api_key:
+            return cls(api_key=api_key, auto_restart=auto_restart)
+
+        # Fall back to config.json
         if config_path is None:
-            # Look for config.json in project root
             config_path = Path(__file__).parent.parent.parent / "config.json"
 
         if not os.path.exists(config_path):
             raise FileNotFoundError(
-                f"Config file not found at {config_path}. "
-                "Please create config.json based on config.example.json"
+                f"API key not found. Either:\n"
+                f"  1. Set {cls.ENV_VAR_NAME} environment variable, or\n"
+                f"  2. Create config.json with your API key"
             )
 
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             data = json.load(f)
 
-        return cls(
-            api_key=data.get('api_key', ''),
-            auto_switch=data.get('auto_switch', False),
-            prompt_before_switch=data.get('prompt_before_switch', True),
-            cost_limit_per_session=data.get('cost_limit_per_session', 10.0),
-            log_usage=data.get('log_usage', True),
-            notify_at_percentage=data.get('notify_at_percentage', 80),
-            auto_revert_on_reset=data.get('auto_revert_on_reset', True)
-        )
+        api_key = data.get("api_key", "")
+        if not api_key:
+            raise ValueError("No api_key found in config.json")
+
+        # Config file can also set auto_restart
+        if not auto_restart:
+            auto_restart = data.get("auto_restart", False)
+
+        return cls(api_key=api_key, auto_restart=auto_restart)
 
     def validate(self) -> bool:
         """Validate configuration settings."""
-        if not self.api_key or not self.api_key.startswith('sk-ant-'):
+        if not self.api_key or not self.api_key.startswith("sk-ant-"):
             raise ValueError("Invalid API key format. Should start with 'sk-ant-'")
-
-        if self.cost_limit_per_session <= 0:
-            raise ValueError("cost_limit_per_session must be positive")
-
-        if not 0 <= self.notify_at_percentage <= 100:
-            raise ValueError("notify_at_percentage must be between 0 and 100")
-
         return True
